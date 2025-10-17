@@ -7,7 +7,7 @@ import { AuthOptions } from 'next-auth'
 
 // Types pour une meilleure sécurité du type
 interface User {
-  id: number | string
+  id: string
   email: string
   role: string
   firstName?: string
@@ -73,7 +73,7 @@ const authOptions: AuthOptions = {
 
           // Retourner l'utilisateur avec toutes les informations nécessaires
           return { 
-            id: me.data.id, 
+            id: String(me.data.id), 
             email: me.data.email, 
             role: me.data.role,
             firstName: me.data.first_name,
@@ -146,7 +146,7 @@ const authOptions: AuthOptions = {
         return {
           ...token,
           user: {
-            ...token.user,
+            ...(token.user as object || {}),
             ...session.user,
           }
         }
