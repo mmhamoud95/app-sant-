@@ -15,8 +15,8 @@ import {
   Link as MuiLink,
   Container
 } from '@mui/material'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 // Importations directes des icônes heroicons
@@ -87,8 +87,17 @@ export default function LoginPage() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Check for registration success message
+  useEffect(() => {
+    if (searchParams.get('registered') === 'success') {
+      setSuccess('Inscription réussie ! Vous pouvez maintenant vous connecter.')
+    }
+  }, [searchParams])
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true)
@@ -148,6 +157,17 @@ export default function LoginPage() {
             elevation={6} 
             className="p-8 rounded-2xl border border-gray-100"
           >
+            {/* Success Alert */}
+            {success && (
+              <Alert 
+                severity="success" 
+                className="mb-4"
+                onClose={() => setSuccess(null)}
+              >
+                {success}
+              </Alert>
+            )}
+
             {/* Error Alert */}
             {error && (
               <Alert 
@@ -196,8 +216,8 @@ export default function LoginPage() {
                   {...register('password', { 
                     required: 'Le mot de passe est requis',
                     minLength: {
-                      value: 6,
-                      message: 'Le mot de passe doit contenir au moins 6 caractères'
+                      value: 12,
+                      message: 'Le mot de passe doit contenir au moins 12 caractères'
                     }
                   })}
                   InputProps={{

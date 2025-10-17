@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import axios from 'axios'
 import {
   Typography,
   Paper,
@@ -32,6 +33,7 @@ import {
   ExclamationCircleIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon } from '@heroicons/react/24/solid'
+import { API_BASE } from '@/lib/env'
 
 export const dynamic = 'force-dynamic'
 
@@ -119,18 +121,98 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Simuler l'envoi du formulaire
     setIsSubmitting(true)
     setError(null)
 
     try {
-      // Ici, vous implémenteriez l'API call pour l'inscription
-      await new Promise(resolve => setTimeout(resolve, 1500)) // Simulation
+      // Validate password matches backend requirements
+      if (formData.password.length < 12) {
+        setError("Le mot de passe doit contenir au moins 12 caractères")
+        setIsSubmitting(false)
+        return
+      }
 
-      // Redirection vers la page de connexion ou dashboard
+      if (formData.password !== formData.passwordConfirm) {
+        setError("Les mots de passe ne correspondent pas")
+        setIsSubmitting(false)
+        return
+      }
+
+      if (!userType) {
+        setError("Veuillez sélectionner un type de compte")
+        setIsSubmitting(false)
+        return
+      }
+
+      // Call the appropriate registration endpoint based on user type
+      const endpoint = userType === 'patient' 
+        ? `${API_BASE}/auth/patient/register`
+        : `${API_BASE}/auth/doctor/register`
+
+      const payload: any = {
+        email: formData.email.trim(),
+        password: formData.password,
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        phone: formData.phone.trim() || null,
+      }
+
+      // Add patient-specific fields
+      if (userType === 'patient') {
+        payload.preferred_language = 'fr' // Default language
+      }
+
+      // Add doctor-specific fields
+      if (userType === 'doctor') {
+        payload.bio = null
+        payload.clinic_name = null
+        payload.clinic_city = null
+        payload.clinic_region = null
+        payload.clinic_country = null
+        payload.specialties = []
+        payload.languages = []
+      }
+
+      await axios.post(endpoint, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        timeout: 10000,
+      })
+
+      // Redirection vers la page de connexion avec message de succès
       router.push('/auth/login?registered=success')
     } catch (err) {
-      setError("Une erreur s'est produite lors de l'inscription. Veuillez réessayer.")
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status
+        const detail = err.response?.data?.detail || err.response?.data?.message
+        
+        if (status === 400) {
+          if (detail && detail.includes('already registered')) {
+            setError("Cet email est déjà utilisé. Veuillez vous connecter ou utiliser un autre email.")
+          } else {
+            setError(detail || "Les données fournies sont invalides. Veuillez vérifier le formulaire.")
+          }
+        } else if (status === 422) {
+          // Validation error from Pydantic
+          const errors = err.response?.data?.errors
+          if (errors) {
+            const messages = Object.values(errors).flat()
+            setError(messages[0] as string || "Données invalides")
+          } else {
+            setError(detail || "Les données fournies sont invalides. Le mot de passe doit contenir au moins 12 caractères.")
+          }
+        } else if (status === 429) {
+          setError("Trop de tentatives. Veuillez réessayer dans quelques minutes.")
+        } else if (status && status >= 500) {
+          setError("Le service est temporairement indisponible. Veuillez réessayer plus tard.")
+        } else {
+          setError(detail || "Une erreur s'est produite lors de l'inscription. Veuillez réessayer.")
+        }
+      } else {
+        setError("Une erreur inattendue s'est produite. Veuillez vérifier votre connexion internet.")
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -150,7 +232,7 @@ export default function RegisterPage() {
         )
       case 2:
         return (
-          formData.password.length >= 8 &&
+          formData.password.length >= 12 &&
           formData.password === formData.passwordConfirm &&
           formData.acceptTerms
         )
@@ -301,7 +383,8 @@ export default function RegisterPage() {
                 onChange={handleInputChange}
                 fullWidth
                 required
-                placeholder="Minimum 8 caractères"
+                placeholder="Minimum 12 caractères"
+                helperText="Le mot de passe doit contenir au moins 12 caractères"
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -340,11 +423,11 @@ export default function RegisterPage() {
                 />
               </div>
               
-              {formData.password && formData.password.length < 8 && (
+              {formData.password && formData.password.length < 12 && (
                 <Box className="flex items-center gap-2 text-amber-600 mt-2">
                   <ExclamationCircleIcon className="h-5 w-5" />
                   <Typography variant="caption">
-                    Le mot de passe doit contenir au moins 8 caractères
+                    Le mot de passe doit contenir au moins 12 caractères
                   </Typography>
                 </Box>
               )}
