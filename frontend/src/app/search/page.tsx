@@ -11,7 +11,7 @@ export default function SearchRedirect() {
   
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <p className="text-gray-600">Redirection vers la page d'accueil...</p>
+      <p className="text-gray-600">Redirection vers la page d&apos;accueil...</p>
     </div>
   )
 }

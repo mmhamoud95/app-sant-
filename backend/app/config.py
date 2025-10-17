@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     backend_cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     secret_key: str = "dev-secret-key-change-in-prod"
+    admin_registration_secret: str = "change-this-admin-secret-in-prod"
     access_token_exp_minutes: int = 15
     refresh_token_exp_days: int = 14
     refresh_token_cookie_name: str = "refresh_token"
