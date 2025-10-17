@@ -64,3 +64,4 @@ playwright-report/
 frontend/public/sw.js
 frontend/public/workbox-*.js
 frontend/public/precache-manifest.*
+*.tsbuildinfo
