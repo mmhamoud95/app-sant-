@@ -14,11 +14,11 @@ export default function AuthErrorPage() {
       case 'CredentialsSignin':
         return 'Email ou mot de passe incorrect'
       case 'AccessDenied':
-        return 'Accès refusé. Vous n\'avez pas les permissions nécessaires.'
+        return 'Accès refusé. Vous n&apos;avez pas les permissions nécessaires.'
       case 'SessionRequired':
         return 'Vous devez être connecté pour accéder à cette page.'
       default:
-        return 'Une erreur d\'authentification s\'est produite.'
+        return 'Une erreur d&apos;authentification s&apos;est produite.'
     }
   }
 
@@ -31,7 +31,7 @@ export default function AuthErrorPage() {
           </div>
         </div>
         <Typography variant="h5" component="h1" className="text-center mb-4">
-          Problème d'authentification
+          Problème d&apos;authentification
         </Typography>
         <Alert severity="error" className="mb-6">
           {getErrorMessage()}

@@ -26,6 +26,12 @@ class RegisterDoctorRequest(BaseModel):
     languages: list[str] = Field(default_factory=list, description="List of language codes")
 
 
+class RegisterAdminRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=12)
+    admin_secret: str = Field(..., description="Secret key to register admin")
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str

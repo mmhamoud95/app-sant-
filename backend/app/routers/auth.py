@@ -8,6 +8,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.schemas import (
     LoginRequest,
     MessageResponse,
+    RegisterAdminRequest,
     RegisterDoctorRequest,
     RegisterPatientRequest,
     TokenResponse,
@@ -288,6 +289,132 @@ def register_doctor(
     )
 
     return UserResponse.model_validate(user)
+
+
+@router.post("/admin/register", response_model=UserResponse, status_code=201)
+def register_admin(
+    req: RegisterAdminRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    # Verify admin secret from environment
+    admin_secret = settings.admin_registration_secret
+    if not admin_secret or req.admin_secret != admin_secret:
+        log_audit_event(
+            db,
+            action="auth.register.admin.failed",
+            resource="auth",
+            request=request,
+            metadata={"email": req.email, "reason": "invalid_admin_secret"},
+            use_separate_session=True,
+        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid admin secret")
+    
+    # Check if email already exists
+    existing = db.query(User).filter(User.email == req.email).first()
+    if existing:
+        log_audit_event(
+            db,
+            action="auth.register.admin.failed",
+            resource="auth",
+            request=request,
+            metadata={"email": req.email, "reason": "email_exists"},
+            use_separate_session=True,
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+    
+    # Create admin user
+    user = User(
+        email=req.email,
+        password_hash=hash_password(req.password),
+        role=UserRole.admin,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    log_audit_event(
+        db,
+        action="auth.register.admin.success",
+        resource="auth",
+        request=request,
+        user_id=user.id,
+        metadata={"admin_id": user.id},
+        use_separate_session=True,
+    )
+
+    return UserResponse.model_validate(user)
+
+
+@router.post("/admin/login", response_model=TokenResponse)
+def admin_login(
+    req: LoginRequest,
+    response: Response,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> TokenResponse:
+    client_ip = request.client.host if request.client else None
+    rate_limit_login_attempt(client_ip, req.email)
+
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user or not verify_password(req.password, user.password_hash):
+        log_audit_event(
+            db,
+            action="auth.admin.login.failed",
+            resource="auth",
+            request=request,
+            user_id=user.id if user else None,
+            metadata={"email": req.email, "reason": "invalid_credentials"},
+            use_separate_session=True,
+        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    # Verify user is admin
+    if user.role != UserRole.admin:
+        log_audit_event(
+            db,
+            action="auth.admin.login.failed",
+            resource="auth",
+            request=request,
+            user_id=user.id,
+            metadata={"email": req.email, "reason": "not_admin", "role": user.role},
+            use_separate_session=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Admin credentials required",
+        )
+
+    if _revoke_user_refresh_tokens(db, user.id):
+        db.flush()
+
+    access_token = create_access_token(data={"sub": str(user.id), "role": user.role})
+    refresh_plain, refresh_hash, expires_at = generate_refresh_token()
+    refresh_entry = RefreshToken(
+        user_id=user.id,
+        token_hash=refresh_hash,
+        expires_at=expires_at,
+        revoked=False,
+    )
+    db.add(refresh_entry)
+    db.commit()
+
+    _set_refresh_cookie(response, refresh_plain, expires_at)
+
+    log_audit_event(
+        db,
+        action="auth.admin.login.success",
+        resource="auth",
+        request=request,
+        user_id=user.id,
+        metadata={"refresh_token_id": refresh_entry.id},
+        use_separate_session=True,
+    )
+
+    return TokenResponse(
+        access_token=access_token,
+        expires_in=settings.access_token_exp_minutes * 60,
+    )
 
 
 @router.post("/login", response_model=TokenResponse)
