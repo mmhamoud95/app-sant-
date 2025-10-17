@@ -1,0 +1,66 @@
+# --- Global ignores ---
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Database / storage artifacts
+*.db
+*.sqlite3
+*.sqlite
+
+# --- Backend (Python / FastAPI) ---
+backend/.venv/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.egg-info/
+.eggs/
+.python-version
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+dist/
+build/
+
+# --- Frontend (Next.js / Node) ---
+frontend/node_modules/
+node_modules/
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Next.js build outputs
+.next/
+frontend/.next/
+frontend/out/
+.vercel/
+.turbo/
+
+# Testing / coverage artifacts
+coverage/
+coverage-*/
+frontend/coverage/
+.playwright/
+playwright-report/
+
+# Generated assets
+frontend/public/sw.js
+frontend/public/workbox-*.js
+frontend/public/precache-manifest.*
