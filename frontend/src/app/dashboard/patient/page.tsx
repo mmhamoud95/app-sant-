@@ -222,119 +222,172 @@ export default function PatientDashboardPage() {
   return (
     <DashboardLayout userRole="patient">
       <Container maxWidth="lg" className="py-4 md:py-8 px-4 md:px-6">
-      {/* Welcome Banner */}
-      <Paper className="mb-6 md:mb-8 p-6 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-2 rounded-lg shadow-md">
-            <UserIcon className="h-8 w-8 text-white" />
+      {/* Welcome Banner - Enhanced */}
+      <Paper 
+        className="mb-6 md:mb-8 p-6 md:p-8 rounded-2xl border-2 border-blue-200 shadow-xl hover:shadow-2xl transition-all duration-300"
+        sx={{
+          background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 50%, #BFDBFE 100%)',
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: -50,
+            right: -50,
+            width: 200,
+            height: 200,
+            background: 'radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%)',
+            borderRadius: '50%',
+          },
+        }}
+      >
+        <div className="flex items-center gap-4 mb-2 relative z-10">
+          <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-blue-400 p-3 rounded-2xl shadow-lg transform hover:scale-110 transition-transform duration-200">
+            <UserIcon className="h-10 w-10 text-white" />
           </div>
           <div>
-            <Typography variant="h4" fontWeight="bold" className="text-gray-800">
+            <Typography variant="h3" fontWeight="800" className="text-gray-900 mb-1">
               Bonjour 👋
             </Typography>
-            <Typography variant="body1" className="text-gray-600">
+            <Typography variant="h6" className="text-blue-700 font-medium">
               Gérez vos rendez-vous médicaux en toute simplicité
             </Typography>
           </div>
         </div>
       </Paper>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
-        <Card className="border border-gray-100 shadow-sm">
-          <CardContent>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="bg-blue-100 p-2 rounded-lg">
-                <CalendarDaysIcon className="h-6 w-6 text-blue-600" />
+      {/* Stats Cards - Enhanced with modern design */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+        <Card 
+          className="border-2 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+          sx={{
+            background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)',
+          }}
+        >
+          <CardContent className="relative overflow-hidden">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="bg-gradient-to-br from-blue-600 to-blue-400 p-3 rounded-xl shadow-md">
+                <CalendarDaysIcon className="h-7 w-7 text-white" />
               </div>
               <div>
-                <Typography variant="h4" fontWeight="bold" className="text-gray-800">
+                <Typography variant="h3" fontWeight="800" className="text-blue-900">
                   {upcomingAppointments.length}
                 </Typography>
-                <Typography variant="body2" className="text-gray-600">
+                <Typography variant="body1" className="text-blue-700 font-semibold">
                   À venir
                 </Typography>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-gray-100 shadow-sm">
-          <CardContent>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="bg-green-100 p-2 rounded-lg">
-                <CheckCircleIcon className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <Typography variant="h4" fontWeight="bold" className="text-gray-800">
-                  {completedAppointments}
-                </Typography>
-                <Typography variant="body2" className="text-gray-600">
-                  Complétés
-                </Typography>
-              </div>
+            <div className="absolute -right-4 -bottom-4 opacity-10">
+              <CalendarDaysIcon className="h-24 w-24 text-blue-600" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border border-gray-100 shadow-sm">
-          <CardContent>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="bg-red-100 p-2 rounded-lg">
-                <XCircleIcon className="h-6 w-6 text-red-600" />
+        <Card 
+          className="border-2 border-green-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+          sx={{
+            background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
+          }}
+        >
+          <CardContent className="relative overflow-hidden">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="bg-gradient-to-br from-green-600 to-green-400 p-3 rounded-xl shadow-md">
+                <CheckCircleIcon className="h-7 w-7 text-white" />
               </div>
               <div>
-                <Typography variant="h4" fontWeight="bold" className="text-gray-800">
+                <Typography variant="h3" fontWeight="800" className="text-green-900">
+                  {completedAppointments}
+                </Typography>
+                <Typography variant="body1" className="text-green-700 font-semibold">
+                  Complétés
+                </Typography>
+              </div>
+            </div>
+            <div className="absolute -right-4 -bottom-4 opacity-10">
+              <CheckCircleIcon className="h-24 w-24 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="border-2 border-red-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+          sx={{
+            background: 'linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)',
+          }}
+        >
+          <CardContent className="relative overflow-hidden">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="bg-gradient-to-br from-red-600 to-red-400 p-3 rounded-xl shadow-md">
+                <XCircleIcon className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <Typography variant="h3" fontWeight="800" className="text-red-900">
                   {cancelledAppointments}
                 </Typography>
-                <Typography variant="body2" className="text-gray-600">
+                <Typography variant="body1" className="text-red-700 font-semibold">
                   Annulés
                 </Typography>
               </div>
+            </div>
+            <div className="absolute -right-4 -bottom-4 opacity-10">
+              <XCircleIcon className="h-24 w-24 text-red-600" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
+      {/* Quick Actions - Enhanced with modern card design */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
         <Link href="/search" className="no-underline">
-          <Paper className="p-6 rounded-xl border border-gray-100 hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer h-full group">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="bg-blue-100 p-2 rounded-lg group-hover:bg-blue-200 transition-colors">
-                <PlusCircleIcon className="h-6 w-6 text-blue-600" />
+          <Paper 
+            className="p-6 md:p-8 rounded-2xl border-2 border-blue-200 hover:border-blue-400 hover:shadow-2xl transition-all duration-300 cursor-pointer h-full group transform hover:-translate-y-1"
+            sx={{
+              background: 'linear-gradient(135deg, #ffffff 0%, #EFF6FF 100%)',
+            }}
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-gradient-to-br from-blue-600 to-blue-400 p-3 rounded-xl group-hover:scale-110 transition-transform duration-200 shadow-lg">
+                <PlusCircleIcon className="h-8 w-8 text-white" />
               </div>
-              <Typography variant="h6" className="font-semibold group-hover:text-blue-600 transition-colors">
+              <Typography variant="h5" className="font-bold group-hover:text-blue-600 transition-colors">
                 Prendre rendez-vous
               </Typography>
             </div>
-            <Typography variant="body2" className="text-gray-600">
-              Trouvez un praticien et réservez votre consultation
+            <Typography variant="body1" className="text-gray-600">
+              Trouvez un praticien et réservez votre consultation rapidement
             </Typography>
           </Paper>
         </Link>
 
         <Link href="/dashboard/patient/profile" className="no-underline">
-          <Paper className="p-6 rounded-xl border border-gray-100 hover:shadow-lg hover:border-purple-200 transition-all cursor-pointer h-full group">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="bg-purple-100 p-2 rounded-lg group-hover:bg-purple-200 transition-colors">
-                <UserIcon className="h-6 w-6 text-purple-600" />
+          <Paper 
+            className="p-6 md:p-8 rounded-2xl border-2 border-purple-200 hover:border-purple-400 hover:shadow-2xl transition-all duration-300 cursor-pointer h-full group transform hover:-translate-y-1"
+            sx={{
+              background: 'linear-gradient(135deg, #ffffff 0%, #F3E8FF 100%)',
+            }}
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-gradient-to-br from-purple-600 to-purple-400 p-3 rounded-xl group-hover:scale-110 transition-transform duration-200 shadow-lg">
+                <UserIcon className="h-8 w-8 text-white" />
               </div>
-              <Typography variant="h6" className="font-semibold group-hover:text-purple-600 transition-colors">
+              <Typography variant="h5" className="font-bold group-hover:text-purple-600 transition-colors">
                 Mon profil
               </Typography>
             </div>
-            <Typography variant="body2" className="text-gray-600">
-              Gérez vos informations personnelles
+            <Typography variant="body1" className="text-gray-600">
+              Gérez vos informations personnelles et vos préférences
             </Typography>
           </Paper>
         </Link>
       </div>
 
-      {/* Appointments List */}
-      <Paper className="rounded-xl border border-gray-100 p-6">
-        <Typography variant="h6" className="mb-4 font-bold flex items-center gap-2">
-          <CalendarDaysIcon className="h-6 w-6 text-blue-600" />
+      {/* Appointments List - Enhanced */}
+      <Paper className="rounded-2xl border-2 border-gray-200 p-6 md:p-8 shadow-xl">
+        <Typography variant="h5" className="mb-6 font-bold flex items-center gap-3">
+          <div className="bg-gradient-to-br from-blue-600 to-blue-400 p-2 rounded-xl">
+            <CalendarDaysIcon className="h-6 w-6 text-white" />
+          </div>
           Mes prochains rendez-vous
         </Typography>
 
@@ -370,32 +423,35 @@ export default function PatientDashboardPage() {
         )}
 
         {upcomingAppointments.length > 0 && (
-          <Stack spacing={3}>
+          <Stack spacing={4}>
             {upcomingAppointments.map((appointment) => (
               <Paper
                 key={appointment.id}
-                className="p-5 hover:shadow-lg hover:border-blue-200 transition-all duration-200 border border-gray-100"
+                className="p-6 hover:shadow-2xl transition-all duration-300 border-2 border-blue-100 hover:border-blue-300 rounded-2xl transform hover:-translate-y-1"
                 elevation={0}
+                sx={{
+                  background: 'linear-gradient(135deg, #ffffff 0%, #F0F9FF 100%)',
+                }}
               >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-start gap-3">
-                    <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-3 rounded-lg">
-                      <UserIcon className="h-6 w-6 text-blue-600" />
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-blue-400 p-4 rounded-2xl shadow-lg">
+                      <UserIcon className="h-7 w-7 text-white" />
                     </div>
                     <div>
-                      <Typography variant="h6" className="font-semibold text-gray-800">
+                      <Typography variant="h6" className="font-bold text-gray-900 mb-2">
                         Dr {appointment.doctor.first_name} {appointment.doctor.last_name}
                       </Typography>
-                      <div className="flex items-center gap-2 mt-1 text-gray-600">
-                        <ClockIcon className="h-4 w-4" />
-                        <Typography variant="body2">
+                      <div className="flex items-center gap-2 mt-2 text-gray-700">
+                        <ClockIcon className="h-5 w-5 text-blue-600" />
+                        <Typography variant="body1" className="font-medium">
                           {formatDate(appointment.slot.start_time)}
                         </Typography>
                       </div>
                       {appointment.doctor.city && (
-                        <div className="flex items-center gap-2 mt-1 text-gray-600">
-                          <MapPinIcon className="h-4 w-4" />
-                          <Typography variant="body2">
+                        <div className="flex items-center gap-2 mt-2 text-gray-700">
+                          <MapPinIcon className="h-5 w-5 text-blue-600" />
+                          <Typography variant="body1">
                             {appointment.doctor.city}
                           </Typography>
                         </div>
@@ -405,30 +461,36 @@ export default function PatientDashboardPage() {
                   <Chip
                     label={statusLabels[appointment.status]}
                     color={statusColors[appointment.status]}
-                    size="small"
+                    size="medium"
+                    sx={{ fontWeight: 600, fontSize: '0.9rem' }}
                   />
                 </div>
 
                 {appointment.reason && (
                   <>
-                    <Divider className="my-3" />
-                    <div className="p-3 bg-blue-50 rounded-lg">
-                      <Typography variant="body2" className="text-gray-700">
-                        <strong>Motif de consultation :</strong> {appointment.reason}
+                    <Divider className="my-4" />
+                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                      <Typography variant="body1" className="text-gray-800">
+                        <strong className="text-blue-700">Motif de consultation :</strong> {appointment.reason}
                       </Typography>
                     </div>
                   </>
                 )}
 
-                <div className="flex gap-2 mt-4">
+                <div className="flex gap-3 mt-5">
                   <Button
                     variant="outlined"
-                    size="small"
+                    size="medium"
                     color="error"
                     onClick={() => setCancelDialog({ open: true, appointment })}
                     disabled={cancelAppointmentMutation.isPending || appointment.status === 'cancelled'}
                     sx={{
                       textTransform: 'none',
+                      fontWeight: 600,
+                      borderWidth: 2,
+                      '&:hover': {
+                        borderWidth: 2,
+                      },
                     }}
                   >
                     {appointment.status === 'cancelled' ? 'Annulé' : 'Annuler'}
