@@ -29,6 +29,12 @@ describe('LoginPage', () => {
 
   it('submits credentials and redirects on success', async () => {
     ;(signIn as jest.Mock).mockResolvedValue({ ok: true, error: null })
+    
+    // Mock the fetch call to /api/auth/session
+    global.fetch = jest.fn().mockResolvedValue({
+      json: async () => ({ user: { role: 'patient' } }),
+    })
+
     const user = userEvent.setup()
 
     render(<LoginPage />)
@@ -45,7 +51,7 @@ describe('LoginPage', () => {
     })
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/')
+      expect(mockPush).toHaveBeenCalledWith('/dashboard/patient')
       expect(mockRefresh).toHaveBeenCalled()
     })
   })

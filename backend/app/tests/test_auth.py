@@ -181,7 +181,7 @@ def test_doctor_register_creates_clinic_and_requires_verification(fake_redis: Fa
         json={"email": email, "password": PASSWORD},
     )
     assert login_response.status_code == 403
-    assert login_response.json()["detail"] == "Doctor account pending verification"
+    assert login_response.json()["detail"] == "Votre compte praticien est en attente de validation par un administrateur. Vous recevrez un email une fois votre compte validé."
 
 
 def test_admin_register_and_login_flow(fake_redis: FakeRedis, monkeypatch: pytest.MonkeyPatch) -> None:
