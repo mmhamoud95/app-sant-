@@ -15,9 +15,10 @@ export default function DashboardLayout({ children, userRole }: DashboardLayoutP
         component="main"
         sx={{
           flexGrow: 1,
-          width: { md: 'calc(100% - 280px)' },
+          width: { xs: '100%', md: 'calc(100% - 280px)' },
           minHeight: '100vh',
           bgcolor: '#F9FAFB',
+          pt: { xs: 8, md: 0 }, // Padding top pour le bouton hamburger sur mobile
         }}
       >
         {children}

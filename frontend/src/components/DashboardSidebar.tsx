@@ -206,7 +206,7 @@ export default function DashboardSidebar({ userRole }: SidebarProps) {
           
           return (
             <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
-              <Link href={item.path} style={{ textDecoration: 'none', width: '100%' }}>
+              <Link href={item.path} style={{ textDecoration: 'none', width: '100%' }} onClick={isMobile ? handleDrawerToggle : undefined}>
                 <ListItemButton
                   sx={{
                     borderRadius: '12px',
@@ -285,52 +285,64 @@ export default function DashboardSidebar({ userRole }: SidebarProps) {
   return (
     <>
       {/* Mobile Menu Button */}
-      {isMobile && (
-        <IconButton
-          color="inherit"
-          aria-label="open drawer"
-          edge="start"
-          onClick={handleDrawerToggle}
-          sx={{ position: 'fixed', top: 16, left: 16, zIndex: 1300, bgcolor: 'white', boxShadow: 2 }}
-        >
-          <Bars3Icon style={{ width: 24, height: 24 }} />
-        </IconButton>
-      )}
+      <IconButton
+        color="inherit"
+        aria-label="open drawer"
+        edge="start"
+        onClick={handleDrawerToggle}
+        sx={{ 
+          display: { xs: 'flex', md: 'none' },
+          position: 'fixed', 
+          top: 16, 
+          left: 16, 
+          zIndex: 1300, 
+          bgcolor: 'white', 
+          boxShadow: 3,
+          '&:hover': {
+            bgcolor: colors.light,
+          },
+          transition: 'all 0.2s',
+        }}
+      >
+        <Bars3Icon style={{ width: 24, height: 24, color: colors.primary }} />
+      </IconButton>
 
       {/* Mobile Drawer */}
-      {isMobile ? (
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true, // Better mobile performance
-          }}
-          sx={{
-            display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
-        >
-          {drawer}
-        </Drawer>
-      ) : (
-        // Desktop Drawer
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', md: 'block' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-              border: 'none',
-              boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
-            },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      )}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{
+          keepMounted: true, // Better mobile performance
+        }}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': { 
+            boxSizing: 'border-box', 
+            width: drawerWidth,
+            boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+          },
+        }}
+      >
+        {drawer}
+      </Drawer>
+
+      {/* Desktop Drawer */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: drawerWidth,
+            border: 'none',
+            boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
+          },
+        }}
+        open
+      >
+        {drawer}
+      </Drawer>
     </>
   )
 }

@@ -1,7 +1,8 @@
 "use client"
 import { useSession, signIn } from 'next-auth/react'
+import { useState } from 'react'
 import { useAuthedAxios } from '@/hooks/useAuthedAxios'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Paper,
   Typography,
@@ -14,6 +15,12 @@ import {
   Card,
   CardContent,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Snackbar,
 } from '@mui/material'
 import {
   CalendarDaysIcon,
@@ -62,6 +69,10 @@ export const dynamic = 'force-dynamic'
 export default function PatientDashboardPage() {
   const { status } = useSession()
   const axios = useAuthedAxios()
+  const queryClient = useQueryClient()
+  const [cancelDialog, setCancelDialog] = useState<{ open: boolean; appointment?: AppointmentItem }>({ open: false })
+  const [cancelReason, setCancelReason] = useState('')
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const {
     data,
@@ -77,6 +88,24 @@ export default function PatientDashboardPage() {
         '/patients/me/appointments'
       )
       return res.data
+    },
+  })
+
+  const cancelAppointmentMutation = useMutation({
+    mutationFn: async ({ appointmentId, reason }: { appointmentId: number; reason?: string }) => {
+      const payload = reason?.trim() ? { reason: reason.trim() } : {}
+      const res = await axios.post(`/patients/me/appointments/${appointmentId}/cancel`, payload)
+      return res.data
+    },
+    onSuccess: () => {
+      setFeedback({ type: 'success', message: 'Rendez-vous annulé avec succès.' })
+      setCancelDialog({ open: false })
+      setCancelReason('')
+      queryClient.invalidateQueries({ queryKey: ['me', 'appointments'] })
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.detail || "Impossible d'annuler le rendez-vous pour le moment."
+      setFeedback({ type: 'error', message })
     },
   })
 
@@ -114,29 +143,46 @@ export default function PatientDashboardPage() {
 
   if (isLoading) {
     return (
-      <main className="p-6 max-w-5xl mx-auto">
-        <Typography variant="h5" className="mb-4">
-          Mes rendez-vous
-        </Typography>
-        <Stack spacing={2}>
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} variant="rectangular" height={100} />
-          ))}
-        </Stack>
-      </main>
+      <DashboardLayout userRole="patient">
+        <Container maxWidth="lg" className="py-8">
+          <div className="mb-8">
+            <Skeleton variant="rectangular" height={80} className="rounded-xl mb-4" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} variant="rectangular" height={100} className="rounded-xl" />
+            ))}
+          </div>
+          <Skeleton variant="rectangular" height={300} className="rounded-xl" />
+        </Container>
+      </DashboardLayout>
     )
   }
 
   if (isError) {
     return (
-      <main className="p-6 max-w-5xl mx-auto">
-        <Alert severity="error" className="mb-4">
-          Une erreur est survenue lors du chargement des rendez-vous.
-        </Alert>
-        <Button variant="outlined" onClick={() => refetch()}>
-          Réessayer
-        </Button>
-      </main>
+      <DashboardLayout userRole="patient">
+        <Container maxWidth="lg" className="py-8">
+          <Alert severity="error" className="mb-4">
+            <Typography variant="h6" className="mb-2">Erreur de chargement</Typography>
+            <Typography variant="body2">
+              {error?.message || "Une erreur est survenue lors du chargement des rendez-vous."}
+            </Typography>
+          </Alert>
+          <Button 
+            variant="contained" 
+            onClick={() => refetch()}
+            sx={{
+              background: 'linear-gradient(to right, #2563EB, #3B82F6)',
+              '&:hover': {
+                background: 'linear-gradient(to right, #1D4ED8, #2563EB)',
+              },
+            }}
+          >
+            Réessayer
+          </Button>
+        </Container>
+      </DashboardLayout>
     )
   }
 
@@ -175,11 +221,11 @@ export default function PatientDashboardPage() {
 
   return (
     <DashboardLayout userRole="patient">
-      <Container maxWidth="lg" className="py-8">
+      <Container maxWidth="lg" className="py-4 md:py-8 px-4 md:px-6">
       {/* Welcome Banner */}
-      <div className="mb-8">
+      <Paper className="mb-6 md:mb-8 p-6 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white">
         <div className="flex items-center gap-3 mb-2">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-2 rounded-lg">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-2 rounded-lg shadow-md">
             <UserIcon className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -191,10 +237,10 @@ export default function PatientDashboardPage() {
             </Typography>
           </div>
         </div>
-      </div>
+      </Paper>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
         <Card className="border border-gray-100 shadow-sm">
           <CardContent>
             <div className="flex items-center gap-3 mb-2">
@@ -251,14 +297,14 @@ export default function PatientDashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
         <Link href="/search" className="no-underline">
-          <Paper className="p-6 rounded-xl border border-gray-100 hover:shadow-lg transition-shadow cursor-pointer h-full">
+          <Paper className="p-6 rounded-xl border border-gray-100 hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer h-full group">
             <div className="flex items-center gap-3 mb-3">
-              <div className="bg-blue-100 p-2 rounded-lg">
+              <div className="bg-blue-100 p-2 rounded-lg group-hover:bg-blue-200 transition-colors">
                 <PlusCircleIcon className="h-6 w-6 text-blue-600" />
               </div>
-              <Typography variant="h6" className="font-semibold">
+              <Typography variant="h6" className="font-semibold group-hover:text-blue-600 transition-colors">
                 Prendre rendez-vous
               </Typography>
             </div>
@@ -268,19 +314,21 @@ export default function PatientDashboardPage() {
           </Paper>
         </Link>
 
-        <Paper className="p-6 rounded-xl border border-gray-100 hover:shadow-lg transition-shadow cursor-pointer h-full">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="bg-purple-100 p-2 rounded-lg">
-              <DocumentTextIcon className="h-6 w-6 text-purple-600" />
+        <Link href="/dashboard/patient/profile" className="no-underline">
+          <Paper className="p-6 rounded-xl border border-gray-100 hover:shadow-lg hover:border-purple-200 transition-all cursor-pointer h-full group">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="bg-purple-100 p-2 rounded-lg group-hover:bg-purple-200 transition-colors">
+                <UserIcon className="h-6 w-6 text-purple-600" />
+              </div>
+              <Typography variant="h6" className="font-semibold group-hover:text-purple-600 transition-colors">
+                Mon profil
+              </Typography>
             </div>
-            <Typography variant="h6" className="font-semibold">
-              Mes documents
+            <Typography variant="body2" className="text-gray-600">
+              Gérez vos informations personnelles
             </Typography>
-          </div>
-          <Typography variant="body2" className="text-gray-600">
-            Accédez à vos ordonnances et résultats d&apos;examens
-          </Typography>
-        </Paper>
+          </Paper>
+        </Link>
       </div>
 
       {/* Appointments List */}
@@ -326,7 +374,7 @@ export default function PatientDashboardPage() {
             {upcomingAppointments.map((appointment) => (
               <Paper
                 key={appointment.id}
-                className="p-5 hover:shadow-md transition-shadow duration-200 border border-gray-100"
+                className="p-5 hover:shadow-lg hover:border-blue-200 transition-all duration-200 border border-gray-100"
                 elevation={0}
               >
                 <div className="flex justify-between items-start mb-3">
@@ -376,27 +424,14 @@ export default function PatientDashboardPage() {
                   <Button
                     variant="outlined"
                     size="small"
-                    sx={{
-                      borderColor: '#2563EB',
-                      color: '#2563EB',
-                      textTransform: 'none',
-                      '&:hover': {
-                        borderColor: '#1D4ED8',
-                        backgroundColor: '#EFF6FF',
-                      },
-                    }}
-                  >
-                    Modifier
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="small"
                     color="error"
+                    onClick={() => setCancelDialog({ open: true, appointment })}
+                    disabled={cancelAppointmentMutation.isPending || appointment.status === 'cancelled'}
                     sx={{
                       textTransform: 'none',
                     }}
                   >
-                    Annuler
+                    {appointment.status === 'cancelled' ? 'Annulé' : 'Annuler'}
                   </Button>
                 </div>
               </Paper>
@@ -412,14 +447,170 @@ export default function PatientDashboardPage() {
               <DocumentTextIcon className="h-6 w-6 text-gray-600" />
               Historique
             </Typography>
-            <Typography variant="body2" className="text-gray-600">
-              {completedAppointments} consultation{completedAppointments > 1 ? 's' : ''} terminée{completedAppointments > 1 ? 's' : ''}
-              {cancelledAppointments > 0 && `, ${cancelledAppointments} annulée${cancelledAppointments > 1 ? 's' : ''}`}
-            </Typography>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              {completedAppointments > 0 && (
+                <Paper className="p-4 border border-green-100 bg-green-50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                    <Typography variant="h5" className="font-bold text-green-800">
+                      {completedAppointments}
+                    </Typography>
+                  </div>
+                  <Typography variant="body2" className="text-green-700">
+                    Consultation{completedAppointments > 1 ? 's' : ''} terminée{completedAppointments > 1 ? 's' : ''}
+                  </Typography>
+                </Paper>
+              )}
+              {cancelledAppointments > 0 && (
+                <Paper className="p-4 border border-red-100 bg-red-50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <XCircleIcon className="h-5 w-5 text-red-600" />
+                    <Typography variant="h5" className="font-bold text-red-800">
+                      {cancelledAppointments}
+                    </Typography>
+                  </div>
+                  <Typography variant="body2" className="text-red-700">
+                    Rendez-vous annulé{cancelledAppointments > 1 ? 's' : ''}
+                  </Typography>
+                </Paper>
+              )}
+            </div>
+            
+            {/* Show past appointments */}
+            <Stack spacing={2}>
+              {data?.items
+                .filter(a => ['completed', 'cancelled'].includes(a.status))
+                .slice(0, 3)
+                .map((appointment) => (
+                  <Paper
+                    key={appointment.id}
+                    className="p-4 border border-gray-100 opacity-75"
+                    elevation={0}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-start gap-3">
+                        <div className={`p-2 rounded-lg ${
+                          appointment.status === 'completed' 
+                            ? 'bg-green-100' 
+                            : 'bg-red-100'
+                        }`}>
+                          {appointment.status === 'completed' ? (
+                            <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                          ) : (
+                            <XCircleIcon className="h-5 w-5 text-red-600" />
+                          )}
+                        </div>
+                        <div>
+                          <Typography variant="body1" className="font-semibold text-gray-700">
+                            Dr {appointment.doctor.first_name} {appointment.doctor.last_name}
+                          </Typography>
+                          <div className="flex items-center gap-2 mt-1 text-gray-600">
+                            <ClockIcon className="h-4 w-4" />
+                            <Typography variant="body2">
+                              {formatDate(appointment.slot.start_time)}
+                            </Typography>
+                          </div>
+                        </div>
+                      </div>
+                      <Chip
+                        label={statusLabels[appointment.status]}
+                        color={statusColors[appointment.status]}
+                        size="small"
+                      />
+                    </div>
+                  </Paper>
+                ))}
+            </Stack>
+            
+            {(data?.items.filter(a => ['completed', 'cancelled'].includes(a.status)).length || 0) > 3 && (
+              <div className="text-center mt-4">
+                <Typography variant="body2" className="text-gray-500">
+                  Et {(data?.items.filter(a => ['completed', 'cancelled'].includes(a.status)).length || 0) - 3} autre{(data?.items.filter(a => ['completed', 'cancelled'].includes(a.status)).length || 0) - 3 > 1 ? 's' : ''} rendez-vous
+                </Typography>
+              </div>
+            )}
           </>
         )}
       </Paper>
     </Container>
+
+    <Dialog
+      open={cancelDialog.open}
+      onClose={() => {
+        if (!cancelAppointmentMutation.isPending) {
+          setCancelDialog({ open: false })
+          setCancelReason('')
+        }
+      }}
+    >
+      <DialogTitle>Annuler le rendez-vous</DialogTitle>
+      <DialogContent sx={{ pt: 1 }}>
+        {cancelDialog.appointment && (
+          <Stack spacing={1} className="mb-3">
+            <Typography variant="subtitle1" fontWeight={600}>
+              Dr {cancelDialog.appointment.doctor.first_name} {cancelDialog.appointment.doctor.last_name}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {formatDate(cancelDialog.appointment.slot.start_time)}
+            </Typography>
+          </Stack>
+        )}
+        <Typography variant="body2" className="mb-3">
+          Confirmez-vous l'annulation de ce rendez-vous ? Vous pouvez indiquer un motif (optionnel).
+        </Typography>
+        <TextField
+          label="Motif (optionnel)"
+          fullWidth
+          multiline
+          minRows={2}
+          value={cancelReason}
+          onChange={(event) => setCancelReason(event.target.value)}
+          disabled={cancelAppointmentMutation.isPending}
+        />
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button
+          onClick={() => {
+            setCancelDialog({ open: false })
+            setCancelReason('')
+          }}
+          disabled={cancelAppointmentMutation.isPending}
+        >
+          Retour
+        </Button>
+        <Button
+          color="error"
+          variant="contained"
+          onClick={() => {
+            if (!cancelDialog.appointment) return
+            cancelAppointmentMutation.mutate({
+              appointmentId: cancelDialog.appointment.id,
+              reason: cancelReason,
+            })
+          }}
+          disabled={cancelAppointmentMutation.isPending}
+        >
+          Confirmer
+        </Button>
+      </DialogActions>
+    </Dialog>
+
+    <Snackbar
+      open={!!feedback}
+      autoHideDuration={6000}
+      onClose={() => setFeedback(null)}
+      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+    >
+      {feedback ? (
+        <Alert
+          onClose={() => setFeedback(null)}
+          severity={feedback.type}
+          sx={{ width: '100%' }}
+        >
+          {feedback.message}
+        </Alert>
+      ) : undefined}
+    </Snackbar>
     </DashboardLayout>
   )
 }

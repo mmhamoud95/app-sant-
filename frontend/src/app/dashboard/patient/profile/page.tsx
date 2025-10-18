@@ -103,10 +103,10 @@ export default function PatientProfilePage() {
 
   return (
     <DashboardLayout userRole="patient">
-      <Container maxWidth="lg" className="py-8">
+      <Container maxWidth="lg" className="py-4 md:py-8 px-4 md:px-6">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
+        <div className="mb-6 md:mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-2 rounded-lg shadow-lg">
                 <UserIcon className="h-8 w-8 text-white" />
@@ -130,6 +130,7 @@ export default function PatientProfilePage() {
                   '&:hover': {
                     background: 'linear-gradient(to right, #1D4ED8, #2563EB)',
                   },
+                  textTransform: 'none',
                 }}
               >
                 Modifier
@@ -139,21 +140,29 @@ export default function PatientProfilePage() {
         </div>
 
         {isLoading && (
-          <Stack spacing={3}>
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} variant="rectangular" height={120} className="rounded-xl" />
-            ))}
-          </Stack>
+          <Paper className="rounded-xl border border-gray-100 p-6">
+            <Stack spacing={3}>
+              <Skeleton variant="rectangular" height={40} className="rounded-lg" />
+              <Skeleton variant="rectangular" height={60} className="rounded-lg" />
+              <Skeleton variant="rectangular" height={60} className="rounded-lg" />
+              <Skeleton variant="rectangular" height={80} className="rounded-lg" />
+            </Stack>
+          </Paper>
         )}
 
         {isError && (
-          <Alert severity="error" className="mb-4">
-            Une erreur est survenue lors du chargement du profil.
+          <Alert severity="error" className="mb-4 rounded-xl">
+            <Typography variant="body1" fontWeight="600" className="mb-1">
+              Erreur de chargement
+            </Typography>
+            <Typography variant="body2">
+              Une erreur est survenue lors du chargement du profil. Veuillez réessayer.
+            </Typography>
           </Alert>
         )}
 
         {!isLoading && profile && (
-          <Paper className="rounded-xl border border-gray-100 p-6">
+          <Paper className="rounded-xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
             {isEditing ? (
               <Stack spacing={3}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -190,19 +199,27 @@ export default function PatientProfilePage() {
                   helperText="Code ISO de la langue (ex: fr pour français, en pour anglais)"
                 />
 
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outlined" onClick={handleCancel}>
+                <div className="flex gap-2 justify-end mt-4">
+                  <Button 
+                    variant="outlined" 
+                    onClick={handleCancel}
+                    disabled={updateMutation.isPending}
+                    sx={{
+                      textTransform: 'none',
+                    }}
+                  >
                     Annuler
                   </Button>
                   <Button
                     variant="contained"
                     onClick={handleSave}
-                    disabled={updateMutation.isPending}
+                    disabled={updateMutation.isPending || !formData.first_name || !formData.last_name}
                     sx={{
                       background: 'linear-gradient(to right, #2563EB, #3B82F6)',
                       '&:hover': {
                         background: 'linear-gradient(to right, #1D4ED8, #2563EB)',
                       },
+                      textTransform: 'none',
                     }}
                   >
                     {updateMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
@@ -210,8 +227,21 @@ export default function PatientProfilePage() {
                 </div>
 
                 {updateMutation.isError && (
-                  <Alert severity="error">
-                    Une erreur est survenue lors de la mise à jour du profil.
+                  <Alert severity="error" className="rounded-lg">
+                    <Typography variant="body2" fontWeight="600">
+                      Erreur lors de la mise à jour
+                    </Typography>
+                    <Typography variant="body2">
+                      Une erreur est survenue lors de la mise à jour du profil. Veuillez réessayer.
+                    </Typography>
+                  </Alert>
+                )}
+                
+                {updateMutation.isSuccess && (
+                  <Alert severity="success" className="rounded-lg">
+                    <Typography variant="body2" fontWeight="600">
+                      ✓ Profil mis à jour avec succès
+                    </Typography>
                   </Alert>
                 )}
               </Stack>
