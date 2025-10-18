@@ -432,7 +432,7 @@ export default function FamilyProfilesPage() {
               <strong>
                 {deleteDialog?.firstName} {deleteDialog?.lastName}
               </strong>{' '}
-              ? Cette action est irréversible et supprimera également l'historique des rendez-vous associé.
+              ? Cette action est irréversible et supprimera également l&apos;historique des rendez-vous associé.
             </Typography>
           </DialogContent>
           <DialogActions>

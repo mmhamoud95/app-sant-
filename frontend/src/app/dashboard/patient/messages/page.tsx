@@ -11,6 +11,7 @@ import {
   Button,
   List,
   ListItem,
+  ListItemButton,
   ListItemAvatar,
   ListItemText,
   Avatar,
@@ -139,35 +140,38 @@ export default function MessagesPage() {
                   mockConversations.map((conv) => (
                     <div key={conv.doctor_id}>
                       <ListItem
-                        button
-                        selected={selectedDoctor === conv.doctor_id}
-                        onClick={() => setSelectedDoctor(conv.doctor_id)}
-                        className={`hover:bg-blue-50 ${selectedDoctor === conv.doctor_id ? 'bg-blue-50' : ''}`}
+                        disablePadding
                       >
-                        <ListItemAvatar>
-                          <Badge badgeContent={conv.unread_count} color="error">
-                            <Avatar className="bg-blue-100">
-                              <UserCircleIcon className="h-6 w-6 text-blue-600" />
-                            </Avatar>
-                          </Badge>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={
-                            <Typography variant="subtitle1" className="font-semibold">
-                              {conv.doctor_name}
-                            </Typography>
-                          }
-                          secondary={
-                            <div className="flex justify-between items-center">
-                              <Typography variant="body2" className="text-gray-600 truncate">
-                                {conv.last_message}
+                        <ListItemButton
+                          selected={selectedDoctor === conv.doctor_id}
+                          onClick={() => setSelectedDoctor(conv.doctor_id)}
+                          className={`hover:bg-blue-50 ${selectedDoctor === conv.doctor_id ? 'bg-blue-50' : ''}`}
+                        >
+                          <ListItemAvatar>
+                            <Badge badgeContent={conv.unread_count} color="error">
+                              <Avatar className="bg-blue-100">
+                                <UserCircleIcon className="h-6 w-6 text-blue-600" />
+                              </Avatar>
+                            </Badge>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={
+                              <Typography variant="subtitle1" className="font-semibold">
+                                {conv.doctor_name}
                               </Typography>
-                              <Typography variant="caption" className="text-gray-500 ml-2">
-                                {formatDate(conv.last_message_date)}
-                              </Typography>
-                            </div>
-                          }
-                        />
+                            }
+                            secondary={
+                              <div className="flex justify-between items-center">
+                                <Typography variant="body2" className="text-gray-600 truncate">
+                                  {conv.last_message}
+                                </Typography>
+                                <Typography variant="caption" className="text-gray-500 ml-2">
+                                  {formatDate(conv.last_message_date)}
+                                </Typography>
+                              </div>
+                            }
+                          />
+                        </ListItemButton>
                       </ListItem>
                       <Divider />
                     </div>
