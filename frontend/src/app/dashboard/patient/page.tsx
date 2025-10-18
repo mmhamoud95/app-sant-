@@ -26,6 +26,7 @@ import {
   DocumentTextIcon,
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import DashboardLayout from '@/components/DashboardLayout'
 
 type AppointmentItem = {
   id: number
@@ -173,7 +174,8 @@ export default function PatientDashboardPage() {
   ).length || 0
 
   return (
-    <Container maxWidth="lg" className="py-8">
+    <DashboardLayout userRole="patient">
+      <Container maxWidth="lg" className="py-8">
       {/* Welcome Banner */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
@@ -418,5 +420,6 @@ export default function PatientDashboardPage() {
         )}
       </Paper>
     </Container>
+    </DashboardLayout>
   )
 }
