@@ -33,6 +33,7 @@ import {
   ChartBarIcon,
   UserIcon,
 } from '@heroicons/react/24/outline'
+import DashboardLayout from '@/components/DashboardLayout'
 
 export const dynamic = 'force-dynamic'
 
@@ -168,7 +169,8 @@ export default function AdminDashboardPage() {
   const verificationRate = ((verifiedDoctors?.total || 0) / Math.max((pendingDoctors?.total || 0) + (verifiedDoctors?.total || 0), 1) * 100).toFixed(0)
 
   return (
-    <Container maxWidth="lg" className="py-8">
+    <DashboardLayout userRole="admin">
+      <Container maxWidth="lg" className="py-8">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
@@ -529,6 +531,7 @@ export default function AdminDashboardPage() {
         </TabPanel>
       </Paper>
     </Container>
+    </DashboardLayout>
   )
 }
 
