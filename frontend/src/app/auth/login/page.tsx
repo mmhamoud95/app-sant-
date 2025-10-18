@@ -114,14 +114,28 @@ export default function LoginPage() {
         if (res.error === 'CredentialsSignin') {
           setError('Email ou mot de passe incorrect')
         } else {
-          setError('Une erreur est survenue. Veuillez réessayer.')
+          // Display the exact error message from the backend
+          setError(res.error)
         }
         setLoading(false)
         return
       }
 
       if (res?.ok) {
-        router.push('/')
+        // Fetch the session to get the user's role
+        const sessionResponse = await fetch('/api/auth/session')
+        const session = await sessionResponse.json()
+        
+        // Redirect based on user role
+        if (session?.user?.role === 'patient') {
+          router.push('/dashboard/patient')
+        } else if (session?.user?.role === 'doctor') {
+          router.push('/dashboard/doctor')
+        } else if (session?.user?.role === 'admin') {
+          router.push('/dashboard/admin')
+        } else {
+          router.push('/')
+        }
         router.refresh()
       }
     } catch (err) {

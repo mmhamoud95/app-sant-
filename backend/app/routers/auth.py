@@ -459,7 +459,7 @@ def login(
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Doctor account pending verification",
+                detail="Votre compte praticien est en attente de validation par un administrateur. Vous recevrez un email une fois votre compte validé.",
             )
 
     if _revoke_user_refresh_tokens(db, user.id):
