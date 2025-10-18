@@ -33,3 +33,20 @@ class DoctorVerificationRequest(BaseModel):
 
 class DoctorVerificationResponse(AdminDoctorSummary):
     note: Optional[str] = None
+
+
+class CancellationSummary(BaseModel):
+    id: int
+    name: str
+    cancellation_count: int
+
+
+class AdminStatsResponse(BaseModel):
+    total_patients: int
+    total_doctors: int
+    verified_doctors: int
+    pending_doctors: int
+    total_appointments: int
+    cancelled_appointments: int
+    patient_cancellations: list[CancellationSummary]
+    doctor_cancellations: list[CancellationSummary]
