@@ -29,6 +29,9 @@ import {
   UsersIcon,
   ShieldCheckIcon,
   Bars3Icon,
+  ChatBubbleLeftRightIcon,
+  DocumentTextIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon } from '@heroicons/react/24/solid'
 import { useState } from 'react'
@@ -68,7 +71,11 @@ export default function DashboardSidebar({ userRole }: SidebarProps) {
           { label: 'Accueil', path: '/dashboard/patient', icon: HomeIcon },
           { label: 'Rechercher', path: '/search', icon: MagnifyingGlassIcon },
           { label: 'Mes rendez-vous', path: '/dashboard/patient', icon: CalendarDaysIcon },
+          { label: 'Messages', path: '/dashboard/patient/messages', icon: ChatBubbleLeftRightIcon },
+          { label: 'Dossier médical', path: '/dashboard/patient/medical-records', icon: DocumentTextIcon },
+          { label: 'Profils familiaux', path: '/dashboard/patient/family', icon: UserGroupIcon },
           { label: 'Mon profil', path: '/dashboard/patient/profile', icon: UserIcon },
+          { label: 'Paramètres', path: '/dashboard/patient/settings', icon: Cog6ToothIcon },
         ]
       case 'doctor':
         return [
