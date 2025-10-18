@@ -47,6 +47,12 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    two_factor_auth: Mapped["TwoFactorAuth"] = relationship(
+        "TwoFactorAuth",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
 
 class Patient(Base):
@@ -60,6 +66,16 @@ class Patient(Base):
     user: Mapped[User] = relationship("User", back_populates="patient")
     appointments: Mapped[list["Appointment"]] = relationship(
         "Appointment",
+        back_populates="patient",
+        cascade="all, delete-orphan",
+    )
+    medical_documents: Mapped[list["MedicalDocument"]] = relationship(
+        "MedicalDocument",
+        back_populates="patient",
+        cascade="all, delete-orphan",
+    )
+    family_profiles: Mapped[list["FamilyProfile"]] = relationship(
+        "FamilyProfile",
         back_populates="patient",
         cascade="all, delete-orphan",
     )
@@ -159,6 +175,11 @@ class Doctor(Base):
     )
     appointments: Mapped[list["Appointment"]] = relationship(
         "Appointment",
+        back_populates="doctor",
+        cascade="all, delete-orphan",
+    )
+    medical_documents: Mapped[list["MedicalDocument"]] = relationship(
+        "MedicalDocument",
         back_populates="doctor",
         cascade="all, delete-orphan",
     )
@@ -298,3 +319,65 @@ class AvailabilityException(Base):
     __table_args__ = (
         UniqueConstraint("doctor_id", "date", name="uq_availability_exception_date"),
     )
+
+
+class Message(Base):
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    sender_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False, index=True)
+    receiver_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(String(2000), nullable=False)
+    attachment_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    sender: Mapped[User] = relationship("User", foreign_keys=[sender_id])
+    receiver: Mapped[User] = relationship("User", foreign_keys=[receiver_id])
+
+
+class DocumentType(str, Enum):
+    prescription = "prescription"
+    test_result = "test_result"
+    certificate = "certificate"
+    report = "report"
+
+
+class MedicalDocument(Base):
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patient.user_id"), nullable=False, index=True)
+    doctor_id: Mapped[int | None] = mapped_column(ForeignKey("doctor.user_id"), nullable=True, index=True)
+    type: Mapped[DocumentType] = mapped_column(PgEnum(DocumentType, name="documenttype"), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    patient: Mapped[Patient] = relationship("Patient", back_populates="medical_documents")
+    doctor: Mapped[Doctor | None] = relationship("Doctor", back_populates="medical_documents")
+
+
+class FamilyProfile(Base):
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patient.user_id"), nullable=False, index=True)
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    relationship_type: Mapped[str] = mapped_column("relationship", String(50), nullable=False)
+    date_of_birth: Mapped[dt_date] = mapped_column(Date, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    patient: Mapped[Patient] = relationship("Patient", back_populates="family_profiles")
+
+
+class TwoFactorAuth(Base):
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False, unique=True, index=True)
+    secret: Mapped[str] = mapped_column(String(255), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    backup_codes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    user: Mapped[User] = relationship("User", back_populates="two_factor_auth")
