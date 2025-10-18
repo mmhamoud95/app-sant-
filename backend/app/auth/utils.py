@@ -1,3 +1,6 @@
+def send_password_reset_email(user):
+    # TODO: Implement actual email sending logic
+    pass
 from datetime import datetime, timedelta, UTC
 from hashlib import sha256
 from secrets import token_urlsafe

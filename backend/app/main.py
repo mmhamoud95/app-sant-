@@ -7,6 +7,7 @@ from app.db.session import engine
 from app.infra.logging_config import configure_logging
 from app.middleware.request_logging import RequestLoggingMiddleware
 from app.services.bootstrap import seed_reference_data
+from app.routers import stats
 from app.routers import (
     health,
     auth,
@@ -57,6 +58,7 @@ def create_app() -> FastAPI:
     app.include_router(family.router, prefix=settings.api_v1_prefix)
     app.include_router(two_factor.router, prefix=settings.api_v1_prefix)
     app.include_router(notifications.router, prefix=settings.api_v1_prefix)
+    app.include_router(stats.router, prefix=settings.api_v1_prefix)
     app.include_router(websocket.router, prefix="")
 
     @app.get("/")

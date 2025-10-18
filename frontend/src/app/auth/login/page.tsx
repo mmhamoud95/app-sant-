@@ -15,7 +15,7 @@ import {
   Link as MuiLink,
   Container
 } from '@mui/material'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -76,28 +76,134 @@ function Footer() {
   )
 }
 
+// Mappe les erreurs NextAuth/back-end vers des messages clairs et des actions suggérées
+function mapAuthError(err?: string) {
+  if (!err) return null
+
+  const raw = String(err)
+
+  const includes = (s: string) => raw.toLowerCase().includes(s.toLowerCase())
+
+  // Normalisation d’erreurs fréquentes
+  if (raw === 'CredentialsSignin' || includes('invalid credentials') || includes('invalid email or password') || includes('email ou mot de passe')) {
+    return {
+      severity: 'error' as const,
+      title: 'Identifiants incorrects',
+      message: 'Adresse email ou mot de passe incorrect. Vérifiez vos informations et réessayez.',
+      showForgot: true,
+    }
+  }
+
+  if (includes('not verified') || includes('unverified') || includes('verify your email') || includes('email non vérifié')) {
+    return {
+      severity: 'warning' as const,
+      title: 'Compte non vérifié',
+      message: 'Votre compte existe mais n’a pas encore été vérifié. Consultez votre boîte mail ou renvoyez un email de vérification.',
+      showResendVerification: true,
+    }
+  }
+
+  if (includes('locked') || includes('disabled') || includes('suspended') || includes('bloqué')) {
+    return {
+      severity: 'error' as const,
+      title: 'Compte bloqué',
+      message: 'Votre compte est temporairement bloqué. Contactez le support si le problème persiste.',
+    }
+  }
+
+  if (includes('too many') || includes('rate limit') || includes('trop de tentatives')) {
+    return {
+      severity: 'warning' as const,
+      title: 'Trop de tentatives',
+      message: 'Vous avez effectué trop de tentatives. Patientez quelques minutes avant de réessayer.',
+    }
+  }
+
+  if (includes('oauthaccountnotlinked')) {
+    return {
+      severity: 'warning' as const,
+      title: 'Compte non lié',
+      message: 'Cette adresse email est déjà utilisée avec une autre méthode de connexion. Connectez-vous avec votre fournisseur d’origine ou réinitialisez votre mot de passe.',
+      showForgot: true,
+    }
+  }
+
+  if (includes('network') || includes('fetch') || includes('failed to fetch')) {
+    return {
+      severity: 'error' as const,
+      title: 'Problème réseau',
+      message: 'Impossible de contacter le serveur. Vérifiez votre connexion internet et réessayez.',
+    }
+  }
+
+  // Par défaut: afficher le message brut si disponible
+  return {
+    severity: 'error' as const,
+    title: 'Impossible de se connecter',
+    message: raw,
+  }
+}
+
 export default function LoginPage() {
   const { 
     register, 
     handleSubmit, 
-    formState: { errors, isSubmitting } 
+    formState: { errors, isSubmitting, isValid },
+    watch,
+    setError: setFieldError,
   } = useForm<FormValues>({
-    mode: 'onBlur',
+    mode: 'onChange',
+    reValidateMode: 'onChange',
+    criteriaMode: 'all',
+    defaultValues: { email: '', password: '' },
   })
+
+  const emailValue = watch('email')
+  const passwordValue = watch('password')
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
+  const [capsLockOn, setCapsLockOn] = useState(false)
+
   const router = useRouter()
   const searchParams = useSearchParams()
+  const alertRef = useRef<HTMLDivElement | null>(null)
 
-  // Check for registration success message
+  // Messages de succès possibles depuis d’autres parcours
   useEffect(() => {
     if (searchParams.get('registered') === 'success') {
       setSuccess('Inscription réussie ! Vous pouvez maintenant vous connecter.')
     }
+    if (searchParams.get('reset') === 'success') {
+      setSuccess('Mot de passe mis à jour. Vous pouvez maintenant vous connecter.')
+    }
+    if (searchParams.get('verified') === 'true') {
+      setSuccess('Email vérifié avec succès. Vous pouvez vous connecter.')
+    }
+    // Propagation d’une erreur éventuelle via query param (?error=...)
+    const urlError = searchParams.get('error')
+    if (urlError) {
+      setError(urlError)
+    }
   }, [searchParams])
+
+  // Effacer l’erreur générale quand l’utilisateur modifie les champs
+  useEffect(() => {
+    if (error) {
+      setError(null)
+    }
+  }, [emailValue, passwordValue])
+
+  // Focus automatique sur l’alerte pour l’accessibilité
+  useEffect(() => {
+    if (error && alertRef.current) {
+      alertRef.current.focus()
+    }
+  }, [error])
+
+  const friendlyError = useMemo(() => mapAuthError(error || undefined), [error])
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true)
@@ -105,41 +211,42 @@ export default function LoginPage() {
 
     try {
       const res = await signIn('credentials', {
-        email: values.email,
+        email: values.email.trim(),
         password: values.password,
         redirect: false,
       })
 
       if (res?.error) {
-        if (res.error === 'CredentialsSignin') {
-          setError('Email ou mot de passe incorrect')
-        } else {
-          // Display the exact error message from the backend
-          setError(res.error)
-        }
+        setError(res.error)
         setLoading(false)
         return
       }
 
       if (res?.ok) {
-        // Fetch the session to get the user's role
-        const sessionResponse = await fetch('/api/auth/session')
-        const session = await sessionResponse.json()
-        
-        // Redirect based on user role
-        if (session?.user?.role === 'patient') {
-          router.push('/dashboard/patient')
-        } else if (session?.user?.role === 'doctor') {
-          router.push('/dashboard/doctor')
-        } else if (session?.user?.role === 'admin') {
-          router.push('/dashboard/admin')
-        } else {
+        try {
+          // Récupère la session pour rediriger selon le rôle
+          const sessionResponse = await fetch('/api/auth/session')
+          const session = await sessionResponse.json()
+          
+          if (session?.user?.role === 'patient') {
+            router.push('/dashboard/patient')
+          } else if (session?.user?.role === 'doctor') {
+            router.push('/dashboard/doctor')
+          } else if (session?.user?.role === 'admin') {
+            router.push('/dashboard/admin')
+          } else {
+            router.push('/')
+          }
+          router.refresh()
+        } catch {
+          // Fallback si la session n’est pas récupérable
           router.push('/')
+          router.refresh()
         }
-        router.refresh()
       }
-    } catch (err) {
-      setError('Une erreur inattendue est survenue')
+    } catch (err: any) {
+      const msg = err?.message || 'Une erreur inattendue est survenue'
+      setError(msg)
       setLoading(false)
     }
   }
@@ -177,23 +284,45 @@ export default function LoginPage() {
                 severity="success" 
                 className="mb-4"
                 onClose={() => setSuccess(null)}
+                role="status"
               >
                 {success}
               </Alert>
             )}
 
-            {/* Error Alert */}
-            {error && (
-              <Alert 
-                severity="error" 
+            {/* Error Alert (claire et actionnable) */}
+            {friendlyError && (
+              <Alert
+                ref={alertRef}
+                tabIndex={-1}
+                severity={friendlyError.severity}
                 className="mb-4"
                 onClose={() => setError(null)}
+                aria-live="assertive"
               >
-                {error}
+                <div className="flex flex-col gap-1">
+                  <span className="font-semibold">{friendlyError.title}</span>
+                  <span>{friendlyError.message}</span>
+                  <div className="mt-1 flex flex-wrap gap-3">
+                    {friendlyError.showForgot && (
+                      <Link href="/auth/forgot-password" className="text-blue-700 hover:underline font-medium">
+                        Mot de passe oublié ?
+                      </Link>
+                    )}
+                    {friendlyError.showResendVerification && emailValue && (
+                      <Link
+                        href={`/auth/verify/resend?email=${encodeURIComponent(emailValue)}`}
+                        className="text-blue-700 hover:underline font-medium"
+                      >
+                        Renvoyer l’email de vérification
+                      </Link>
+                    )}
+                  </div>
+                </div>
               </Alert>
             )}
 
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={handleSubmit(onSubmit)} noValidate>
               <Stack spacing={3}>
                 {/* Email Field */}
                 <TextField
@@ -201,8 +330,10 @@ export default function LoginPage() {
                   type="email"
                   placeholder="exemple@email.com"
                   fullWidth
+                  autoComplete="email"
+                  inputProps={{ inputMode: 'email', 'aria-label': 'Adresse email', maxLength: 254 }}
                   error={!!errors.email}
-                  helperText={errors.email?.message}
+                  helperText={errors.email?.message || "Nous n'utiliserons jamais votre email pour du spam."}
                   {...register('email', { 
                     required: 'L\'email est requis',
                     pattern: {
@@ -220,43 +351,59 @@ export default function LoginPage() {
                 />
 
                 {/* Password Field */}
-                <TextField
-                  label="Mot de passe"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Entrez votre mot de passe"
-                  fullWidth
-                  error={!!errors.password}
-                  helperText={errors.password?.message}
-                  {...register('password', { 
-                    required: 'Le mot de passe est requis',
-                    minLength: {
-                      value: 12,
-                      message: 'Le mot de passe doit contenir au moins 12 caractères'
-                    }
-                  })}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <LockClosedIcon className="h-5 w-5 text-gray-400" />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowPassword(!showPassword)}
-                          edge="end"
-                          size="small"
-                        >
-                          {showPassword ? (
-                            <EyeSlashIcon className="h-5 w-5 text-gray-400" />
-                          ) : (
-                            <EyeIcon className="h-5 w-5 text-gray-400" />
-                          )}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
+                <div>
+                  <TextField
+                    label="Mot de passe"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Entrez votre mot de passe"
+                    fullWidth
+                    autoComplete="current-password"
+                    inputProps={{ 'aria-label': 'Mot de passe', maxLength: 128 }}
+                    error={!!errors.password}
+                    helperText={errors.password?.message}
+                    {...register('password', { 
+                      required: 'Le mot de passe est requis',
+                      minLength: {
+                        value: 12,
+                        message: 'Le mot de passe doit contenir au moins 12 caractères'
+                      }
+                    })}
+                    onKeyDown={(e) => {
+                      // Détection du Caps Lock
+                      // getModifierState existe sur KeyboardEvent
+                      const isOn = (e as any).getModifierState?.('CapsLock')
+                      setCapsLockOn(!!isOn)
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            onClick={() => setShowPassword(!showPassword)}
+                            edge="end"
+                            size="small"
+                            aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                          >
+                            {showPassword ? (
+                              <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                            ) : (
+                              <EyeIcon className="h-5 w-5 text-gray-400" />
+                            )}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  {capsLockOn && (
+                    <Typography variant="caption" className="text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 mt-1 inline-block">
+                      Attention: la touche Verr. Maj est activée.
+                    </Typography>
+                  )}
+                </div>
 
                 {/* Forgot Password Link */}
                 <div className="text-right">
@@ -276,7 +423,7 @@ export default function LoginPage() {
                   variant="contained"
                   size="large"
                   fullWidth
-                  disabled={loading || isSubmitting}
+                  disabled={loading || isSubmitting || !isValid}
                   startIcon={
                     loading ? (
                       <CircularProgress size={20} color="inherit" />

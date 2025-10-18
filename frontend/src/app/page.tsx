@@ -1,6 +1,6 @@
 "use client"
 import Link from 'next/link'
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { API_BASE } from '@/lib/env'
@@ -22,7 +22,6 @@ import {
   UserCircleIcon,
   LanguageIcon,
   SparklesIcon,
-  FunnelIcon,
   XMarkIcon
 } from '@/components/medical-icons'
 import {
@@ -37,6 +36,10 @@ import {
   InputAdornment,
   IconButton,
   Divider,
+  Avatar,
+  Rating,
+  LinearProgress,
+  Box,
 } from '@mui/material'
 
 type DoctorSummary = {
@@ -59,11 +62,61 @@ type PaginatedDoctorResponse = {
   limit: number
 }
 
+type StatsOverview = {
+  totalPatients: number
+  totalDoctors: number
+  totalAppointments: number
+  verifiedDoctors: number
+}
+
+type SpecialtyStat = {
+  specialty_id: number
+  name: string
+  count: number
+}
+
+type PatientFeedback = {
+  satisfactionRate: number // 0..100
+  averageRating: number // 0..5
+  totalReviews: number
+  recent: Array<{ id: string; patient: string; city?: string; comment: string; rating: number }>
+}
+
+function formatNumber(n?: number) {
+  if (n == null) return '—'
+  return Intl.NumberFormat('fr-FR').format(n)
+}
+
 export default function HomePage() {
   const [city, setCity] = useState('')
   const [specialty, setSpecialty] = useState('')
   const [page, setPage] = useState(1)
   const [showResults, setShowResults] = useState(false)
+
+  // Stats + Specialty distribution + Patient feedback
+  const { data: stats, isLoading: loadingStats, isError: statsError } = useQuery({
+    queryKey: ['stats-overview'],
+    queryFn: async () => {
+      const res = await axios.get<StatsOverview>(`${API_BASE}/stats/overview`)
+      return res.data
+    }
+  })
+
+  const { data: specialtyStats, isLoading: loadingSpecialties, isError: specialtiesError } = useQuery({
+    queryKey: ['stats-by-specialty'],
+    queryFn: async () => {
+      const res = await axios.get<SpecialtyStat[]>(`${API_BASE}/stats/doctors-by-specialty`)
+      return (res.data || []).sort((a, b) => b.count - a.count)
+    }
+  })
+
+  const { data: feedback, isLoading: loadingFeedback, isError: feedbackError } = useQuery({
+    queryKey: ['patient-feedback'],
+    queryFn: async () => {
+      const res = await axios.get<PatientFeedback>(`${API_BASE}/stats/patient-feedback`)
+      return res.data
+    }
+  })
 
   const queryEnabled = useMemo(() => city.length > 0 || specialty.length > 0, [city, specialty])
 
@@ -88,6 +141,9 @@ export default function HomePage() {
     setPage(1)
     setShowResults(true)
     refetch()
+    // Scroll to results
+    const target = document.getElementById('search-results')
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const handleClearFilters = () => {
@@ -99,13 +155,31 @@ export default function HomePage() {
 
   const hasActiveFilters = city.length > 0 || specialty.length > 0
 
+  // Simple auto-rotation for testimonials
+  const [tIndex, setTIndex] = useState(0)
+  useEffect(() => {
+    if (!feedback?.recent?.length) return
+    const id = setInterval(() => {
+      setTIndex((i) => (i + 1) % feedback.recent.length)
+    }, 4500)
+    return () => clearInterval(id)
+  }, [feedback?.recent?.length])
+
+  const topSpecialties = (specialtyStats || []).slice(0, 10)
+  const maxSpecialtyCount = Math.max(...(specialtyStats || []).map(s => s.count || 0), 1)
+
   return (
     <PageLayout>
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.12),transparent_60%),radial-gradient(ellipse_at_bottom_left,rgba(16,185,129,0.12),transparent_60%)] pointer-events-none" />
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-          <div className="text-center max-w-4xl mx-auto">
+          <div className="text-center max-w-5xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold mb-4 border border-blue-100">
+              <SparklesIcon className="h-4 w-4" />
+              <span>Nouvelle version — plus rapide et plus intuitive</span>
+            </div>
+
             <div className="flex justify-center mb-6">
               <div className="bg-gradient-to-r from-blue-600 to-green-600 p-4 rounded-2xl shadow-lg animate-pulse">
                 <HeartIcon className="h-14 w-14 text-white" />
@@ -117,7 +191,7 @@ export default function HomePage() {
             <p className="text-xl md:text-2xl text-gray-700 mb-6 font-medium">
               Prenez rendez-vous avec les meilleurs praticiens en quelques clics
             </p>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-8">
               Plateforme moderne et sécurisée pour gérer vos consultations médicales. 
               Simple, rapide et disponible 24h/24.
             </p>
@@ -144,10 +218,8 @@ export default function HomePage() {
                     placeholder="Ex: Paris, Lyon, Marseille..."
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSearch()
-                      }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSearch()
                     }}
                     InputProps={{
                       startAdornment: (
@@ -170,10 +242,8 @@ export default function HomePage() {
                     placeholder="Ex: cardiologue, dentiste..."
                     value={specialty}
                     onChange={(e) => setSpecialty(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSearch()
-                      }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSearch()
                     }}
                     InputProps={{
                       startAdornment: (
@@ -246,8 +316,253 @@ export default function HomePage() {
 
               <p className="text-sm text-gray-500 mt-3 flex items-center justify-center gap-2">
                 <StarIcon className="h-4 w-4 text-yellow-500" />
-                Plus de 10 000 praticiens disponibles
+                Plus de {formatNumber(stats?.totalDoctors || 10000)} praticiens disponibles
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* KPI Stats Strip */}
+      <section className="py-6">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {loadingStats ? (
+              <>
+                {[...Array(4)].map((_, i) => (
+                  <Skeleton key={i} variant="rectangular" height={92} className="rounded-xl" />
+                ))}
+              </>
+            ) : statsError ? (
+              <>
+                {['Patients', 'Praticiens', 'Rendez-vous', 'Vérifiés'].map((label, i) => (
+                  <Paper key={i} className="p-4 rounded-xl border border-gray-100">
+                    <Typography className="text-sm text-gray-500">{label}</Typography>
+                    <Typography variant="h5" className="font-bold text-gray-800">—</Typography>
+                  </Paper>
+                ))}
+              </>
+            ) : (
+              <>
+                <Paper className="p-4 rounded-xl border border-gray-100">
+                  <Typography className="text-sm text-gray-500">Patients actifs</Typography>
+                  <Typography variant="h5" className="font-bold text-gray-800">
+                    {formatNumber(stats?.totalPatients)}
+                  </Typography>
+                  <LinearProgress variant="determinate" value={100} sx={{ mt: 1.5, height: 6, borderRadius: 999 }} />
+                </Paper>
+                <Paper className="p-4 rounded-xl border border-gray-100">
+                  <Typography className="text-sm text-gray-500">Praticiens</Typography>
+                  <Typography variant="h5" className="font-bold text-gray-800">
+                    {formatNumber(stats?.totalDoctors)}
+                  </Typography>
+                  <LinearProgress variant="determinate" value={80} sx={{ mt: 1.5, height: 6, borderRadius: 999 }} />
+                </Paper>
+                <Paper className="p-4 rounded-xl border border-gray-100">
+                  <Typography className="text-sm text-gray-500">Rendez-vous</Typography>
+                  <Typography variant="h5" className="font-bold text-gray-800">
+                    {formatNumber(stats?.totalAppointments)}
+                  </Typography>
+                  <LinearProgress variant="determinate" value={65} sx={{ mt: 1.5, height: 6, borderRadius: 999 }} />
+                </Paper>
+                <Paper className="p-4 rounded-xl border border-gray-100">
+                  <Typography className="text-sm text-gray-500">Praticiens vérifiés</Typography>
+                  <Typography variant="h5" className="font-bold text-gray-800">
+                    {formatNumber(stats?.verifiedDoctors)}
+                  </Typography>
+                  <LinearProgress variant="determinate" value={90} sx={{ mt: 1.5, height: 6, borderRadius: 999 }} />
+                </Paper>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Top Specialties + Quick Filters */}
+      <section className="py-10 bg-white/50">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-bold text-gray-800">Top spécialités</h3>
+            <Button
+              size="small"
+              onClick={() => {
+                setSpecialty('')
+                setShowResults(false)
+              }}
+              sx={{ textTransform: 'none' }}
+            >
+              Réinitialiser
+            </Button>
+          </div>
+
+          {loadingSpecialties ? (
+            <Stack spacing={2}>
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} variant="rectangular" height={40} className="rounded-lg" />
+              ))}
+            </Stack>
+          ) : specialtiesError ? (
+            <Paper className="p-4 rounded-lg border border-gray-100 text-gray-600">
+              Impossible de charger les statistiques des spécialités.
+            </Paper>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {topSpecialties.map((s) => {
+                const pct = Math.round((s.count / maxSpecialtyCount) * 100)
+                return (
+                  <Paper
+                    key={s.specialty_id}
+                    className="p-4 rounded-xl border border-gray-100 hover:border-blue-300 transition-all group"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <SparklesIcon className="h-5 w-5 text-green-600" />
+                        <Typography className="font-semibold text-gray-800">{s.name}</Typography>
+                      </div>
+                      <Chip label={`${formatNumber(s.count)} praticien${s.count > 1 ? 's' : ''}`} size="small" />
+                    </div>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <LinearProgress
+                          variant="determinate"
+                          value={pct}
+                          sx={{
+                            height: 8,
+                            borderRadius: 999,
+                            '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg,#2563EB,#10B981)' },
+                          }}
+                        />
+                      </Box>
+                      <Typography variant="body2" className="text-gray-500 w-10 text-right">{pct}%</Typography>
+                    </Box>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => {
+                          setSpecialty(s.name)
+                          setPage(1)
+                          setShowResults(true)
+                          refetch()
+                          const target = document.getElementById('search-results')
+                          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        }}
+                        sx={{
+                          textTransform: 'none',
+                          background: 'linear-gradient(to right, #2563EB, #10B981)',
+                          '&:hover': { background: 'linear-gradient(to right, #1D4ED8, #059669)' },
+                        }}
+                      >
+                        Voir les praticiens
+                      </Button>
+                      <Chip
+                        label="Ajouter au filtre"
+                        onClick={() => setSpecialty(s.name)}
+                        variant="outlined"
+                        size="small"
+                        className="cursor-pointer"
+                      />
+                    </div>
+                  </Paper>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Patient Feedback / Testimonials */}
+      <section className="py-12">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center gap-8 max-w-6xl mx-auto">
+            <div className="w-full md:w-1/2">
+              <h3 className="text-3xl font-bold text-gray-800 mb-4">Ils nous font confiance</h3>
+              {loadingFeedback ? (
+                <Stack spacing={2}>
+                  <Skeleton variant="text" height={36} width="60%" />
+                  <Skeleton variant="rectangular" height={120} className="rounded-xl" />
+                </Stack>
+              ) : feedbackError ? (
+                <Paper className="p-6 rounded-xl border border-gray-100">
+                  <Typography className="text-gray-600">Avis indisponibles pour le moment.</Typography>
+                </Paper>
+              ) : feedback ? (
+                <>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div>
+                      <Typography className="text-sm text-gray-500">Taux de satisfaction</Typography>
+                      <Typography variant="h5" className="font-bold text-gray-800">
+                        {Math.round(feedback.satisfactionRate)}%
+                      </Typography>
+                    </div>
+                    <Divider orientation="vertical" flexItem />
+                    <div>
+                      <Typography className="text-sm text-gray-500 flex items-center gap-1">
+                        Note moyenne
+                      </Typography>
+                      <div className="flex items-center gap-1">
+                        <Rating value={feedback.averageRating} readOnly precision={0.1} />
+                        <Typography className="text-gray-700 font-semibold">
+                          {feedback.averageRating.toFixed(1)}/5
+                        </Typography>
+                      </div>
+                    </div>
+                    <Divider orientation="vertical" flexItem />
+                    <div>
+                      <Typography className="text-sm text-gray-500">Avis</Typography>
+                      <Typography className="text-gray-800 font-semibold">
+                        {formatNumber(feedback.totalReviews)}
+                      </Typography>
+                    </div>
+                  </div>
+                  {feedback.recent?.length ? (
+                    <Paper elevation={0} className="p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-green-50 border border-gray-100">
+                      {feedback.recent.slice(tIndex, tIndex + 1).map((r) => (
+                        <div key={r.id} className="flex items-start gap-4">
+                          <Avatar sx={{ bgcolor: '#2563EB' }}>
+                            {r.patient?.[0]?.toUpperCase() || 'P'}
+                          </Avatar>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Typography className="font-semibold text-gray-800">{r.patient}</Typography>
+                              {r.city && (
+                                <span className="text-xs text-gray-500">• {r.city}</span>
+                              )}
+                            </div>
+                            <Rating value={r.rating} readOnly size="small" sx={{ mt: 0.5 }} />
+                            <Typography className="text-gray-700 mt-2">{r.comment}</Typography>
+                          </div>
+                        </div>
+                      ))}
+                    </Paper>
+                  ) : (
+                    <Typography className="text-gray-600">Soyez le premier à laisser un avis.</Typography>
+                  )}
+                </>
+              ) : null}
+            </div>
+            <div className="w-full md:w-1/2">
+              <Paper className="p-6 rounded-2xl border border-gray-100">
+                <h4 className="text-xl font-semibold text-gray-800 mb-3">Recherches fréquentes</h4>
+                <div className="flex flex-wrap gap-2">
+                  {['Généraliste', 'Dentiste', 'Ophtalmologue', 'Cardiologue', 'Dermatologue', 'Pédiatre'].map((tag) => (
+                    <Chip
+                      key={tag}
+                      label={tag}
+                      clickable
+                      onClick={() => setSpecialty(tag)}
+                      variant="outlined"
+                      className="hover:border-blue-300"
+                    />
+                  ))}
+                </div>
+                <Divider className="my-4" />
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Conseil</h4>
+                <Typography className="text-sm text-gray-600">
+                  Utilisez la barre de recherche et les filtres rapides pour trouver un praticien près de chez vous,
+                  puis prenez rendez-vous immédiatement.
+                </Typography>
+              </Paper>
             </div>
           </div>
         </div>
@@ -255,7 +570,7 @@ export default function HomePage() {
 
       {/* Search Results Section */}
       {showResults && (
-        <section className="py-8 bg-white/50">
+        <section id="search-results" className="py-8 bg-white/50">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto">
               {isLoading && (
@@ -553,12 +868,24 @@ export default function HomePage() {
                 <ul className="flex flex-col gap-4">
                   <li>
                     <Link
-                      href="/dashboard/doctor"
+                      href="/auth/login?role=doctor"
+                      className="group/btn flex items-center justify-between bg-gradient-to-r from-green-50 to-green-100 text-green-900 font-semibold px-6 py-4 rounded-xl hover:from-green-100 hover:to-green-200 transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                      <div className="flex items-center gap-3">
+                        <ArrowRightOnRectangleIcon className="h-6 w-6" />
+                        <span>Se connecter</span>
+                      </div>
+                      <ArrowRightIcon className="h-5 w-5 transform group-hover/btn:translate-x-1 transition-transform" />
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/auth/register?role=doctor"
                       className="group/btn flex items-center justify-between bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold px-6 py-4 rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-md hover:shadow-lg"
                     >
                       <div className="flex items-center gap-3">
-                        <ClipboardDocumentCheckIcon className="h-6 w-6" />
-                        <span>Accéder au Dashboard</span>
+                        <UserPlusIcon className="h-6 w-6" />
+                        <span>Créer un compte</span>
                       </div>
                       <ArrowRightIcon className="h-5 w-5 transform group-hover/btn:translate-x-1 transition-transform" />
                     </Link>
