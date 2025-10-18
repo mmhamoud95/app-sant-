@@ -3,14 +3,17 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.auth.dependencies import get_current_admin
-from app.db.models import Doctor
+from app.db.models import Appointment, AppointmentStatus, Doctor, Patient
 from app.db.session import get_db
 from app.schemas.admin import (
     AdminDoctorListResponse,
     AdminDoctorSummary,
+    AdminStatsResponse,
+    CancellationSummary,
     DoctorVerificationRequest,
     DoctorVerificationResponse,
 )
@@ -119,3 +122,105 @@ def verify_doctor(
 
     summary = _doctor_to_summary(doctor)
     return DoctorVerificationResponse(**summary.model_dump(), note=payload.note)
+
+
+@router.get("/stats", response_model=AdminStatsResponse)
+def get_admin_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin = Depends(get_current_admin),
+) -> AdminStatsResponse:
+    """Get comprehensive statistics for the admin dashboard."""
+    
+    # Total patients
+    total_patients = db.query(func.count(Patient.user_id)).scalar() or 0
+    
+    # Total doctors
+    total_doctors = db.query(func.count(Doctor.user_id)).scalar() or 0
+    
+    # Verified doctors
+    verified_doctors = db.query(func.count(Doctor.user_id)).filter(Doctor.verified.is_(True)).scalar() or 0
+    
+    # Pending doctors
+    pending_doctors = db.query(func.count(Doctor.user_id)).filter(Doctor.verified.is_(False)).scalar() or 0
+    
+    # Total appointments
+    total_appointments = db.query(func.count(Appointment.id)).scalar() or 0
+    
+    # Cancelled appointments
+    cancelled_appointments = db.query(func.count(Appointment.id)).filter(
+        Appointment.status == AppointmentStatus.cancelled
+    ).scalar() or 0
+    
+    # Patient cancellations (grouped by patient)
+    patient_cancellations = (
+        db.query(
+            Patient.user_id,
+            Patient.first_name,
+            Patient.last_name,
+            func.count(Appointment.id).label('cancellation_count')
+        )
+        .join(Appointment, Appointment.patient_id == Patient.user_id)
+        .filter(Appointment.status == AppointmentStatus.cancelled)
+        .group_by(Patient.user_id, Patient.first_name, Patient.last_name)
+        .order_by(func.count(Appointment.id).desc())
+        .limit(50)
+        .all()
+    )
+    
+    # Doctor cancellations (grouped by doctor) - these are appointments that were cancelled 
+    # This counts cancellations of appointments with each doctor
+    doctor_cancellations = (
+        db.query(
+            Doctor.user_id,
+            Doctor.first_name,
+            Doctor.last_name,
+            func.count(Appointment.id).label('cancellation_count')
+        )
+        .join(Appointment, Appointment.doctor_id == Doctor.user_id)
+        .filter(Appointment.status == AppointmentStatus.cancelled)
+        .group_by(Doctor.user_id, Doctor.first_name, Doctor.last_name)
+        .order_by(func.count(Appointment.id).desc())
+        .limit(50)
+        .all()
+    )
+    
+    patient_cancellation_list = [
+        CancellationSummary(
+            id=row.user_id,
+            name=f"{row.first_name} {row.last_name}",
+            cancellation_count=row.cancellation_count
+        )
+        for row in patient_cancellations
+    ]
+    
+    doctor_cancellation_list = [
+        CancellationSummary(
+            id=row.user_id,
+            name=f"Dr. {row.first_name} {row.last_name}",
+            cancellation_count=row.cancellation_count
+        )
+        for row in doctor_cancellations
+    ]
+    
+    log_audit_event(
+        db,
+        action="admin.stats.viewed",
+        resource="admin",
+        request=request,
+        user_id=admin.id,
+        metadata={},
+        use_separate_session=True,
+    )
+    
+    return AdminStatsResponse(
+        total_patients=total_patients,
+        total_doctors=total_doctors,
+        verified_doctors=verified_doctors,
+        pending_doctors=pending_doctors,
+        total_appointments=total_appointments,
+        cancelled_appointments=cancelled_appointments,
+        patient_cancellations=patient_cancellation_list,
+        doctor_cancellations=doctor_cancellation_list,
+    )
+
