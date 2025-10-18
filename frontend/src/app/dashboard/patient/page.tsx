@@ -556,7 +556,7 @@ export default function PatientDashboardPage() {
           </Stack>
         )}
         <Typography variant="body2" className="mb-3">
-          Confirmez-vous l'annulation de ce rendez-vous ? Vous pouvez indiquer un motif (optionnel).
+          Confirmez-vous l&apos;annulation de ce rendez-vous ? Vous pouvez indiquer un motif (optionnel).
         </Typography>
         <TextField
           label="Motif (optionnel)"

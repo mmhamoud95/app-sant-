@@ -18,6 +18,7 @@ import {
   Snackbar,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   ListItemSecondaryAction,
   IconButton,
@@ -194,7 +195,7 @@ export default function SettingsPage() {
                 {twoFactorEnabled && (
                   <div className="mt-4 p-3 bg-green-50 rounded-lg">
                     <Typography variant="body2" className="text-green-800">
-                      Votre compte est protégé par l'authentification à deux facteurs. Un code sera demandé lors de chaque connexion.
+                      Votre compte est protégé par l&apos;authentification à deux facteurs. Un code sera demandé lors de chaque connexion.
                     </Typography>
                   </div>
                 )}
@@ -219,9 +220,9 @@ export default function SettingsPage() {
                     }
                     label={
                       <div>
-                        <Typography variant="body1">Partage des données d'utilisation</Typography>
+                        <Typography variant="body1">Partage des données d&apos;utilisation</Typography>
                         <Typography variant="caption" className="text-gray-600">
-                          Aidez-nous à améliorer l'application en partageant des données anonymisées
+                          Aidez-nous à améliorer l&apos;application en partageant des données anonymisées
                         </Typography>
                       </div>
                     }
@@ -240,7 +241,7 @@ export default function SettingsPage() {
                       <div>
                         <Typography variant="body1">Participation à la recherche médicale</Typography>
                         <Typography variant="caption" className="text-gray-600">
-                          Contribuez à la recherche en autorisant l'utilisation anonyme de vos données
+                          Contribuez à la recherche en autorisant l&apos;utilisation anonyme de vos données
                         </Typography>
                       </div>
                     }
@@ -440,25 +441,31 @@ export default function SettingsPage() {
                   </Typography>
                 </div>
                 <List>
-                  <ListItem button>
-                    <ListItemText
-                      primary="Comment prendre un rendez-vous ?"
-                      secondary="Cliquez sur 'Prendre rendez-vous' et recherchez un praticien..."
-                    />
+                  <ListItem disablePadding>
+                    <ListItemButton>
+                      <ListItemText
+                        primary="Comment prendre un rendez-vous ?"
+                        secondary="Cliquez sur 'Prendre rendez-vous' et recherchez un praticien..."
+                      />
+                    </ListItemButton>
                   </ListItem>
                   <Divider />
-                  <ListItem button>
-                    <ListItemText
-                      primary="Comment annuler un rendez-vous ?"
-                      secondary="Allez dans 'Mes rendez-vous' et cliquez sur 'Annuler'..."
-                    />
+                  <ListItem disablePadding>
+                    <ListItemButton>
+                      <ListItemText
+                        primary="Comment annuler un rendez-vous ?"
+                        secondary="Allez dans 'Mes rendez-vous' et cliquez sur 'Annuler'..."
+                      />
+                    </ListItemButton>
                   </ListItem>
                   <Divider />
-                  <ListItem button>
-                    <ListItemText
-                      primary="Où trouver mes documents médicaux ?"
-                      secondary="Accédez à 'Dossier médical' dans le menu..."
-                    />
+                  <ListItem disablePadding>
+                    <ListItemButton>
+                      <ListItemText
+                        primary="Où trouver mes documents médicaux ?"
+                        secondary="Accédez à 'Dossier médical' dans le menu..."
+                      />
+                    </ListItemButton>
                   </ListItem>
                 </List>
                 <Button
