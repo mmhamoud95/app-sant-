@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from app.config import settings
 from app.main import app
 from app.db.base import Base
-from app.db.models import AuditLog, Doctor
+from app.db.models import AuditLog, Doctor, User, UserRole
 from app.db.session import SessionLocal, engine
 from app.services.bootstrap import seed_reference_data
 
@@ -87,6 +87,12 @@ def _unique_email() -> str:
     return f"user-{uuid4().hex}@example.com"
 
 
+def _reset_database() -> None:
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    seed_reference_data()
+
+
 def _register_patient(email: str) -> dict:
     payload = {
         "email": email,
@@ -118,6 +124,100 @@ def _register_doctor(email: str) -> dict:
     response = client.post("/api/v1/auth/doctor/register", json=payload)
     assert response.status_code == 201
     return response.json()
+
+
+def test_patient_register_persists_user_and_profile(fake_redis: FakeRedis) -> None:
+    _reset_database()
+    email = _unique_email()
+
+    register_payload = _register_patient(email)
+    assert register_payload["email"] == email
+    assert register_payload["role"] == UserRole.patient.value
+
+    with SessionLocal() as session:
+        user = session.query(User).filter(User.email == email).first()
+        assert user is not None
+        assert user.role == UserRole.patient
+        assert user.patient is not None
+        assert user.patient.first_name == "Test"
+
+
+def test_patient_register_duplicate_email_returns_400(fake_redis: FakeRedis) -> None:
+    _reset_database()
+    email = _unique_email()
+    _register_patient(email)
+
+    payload = {
+        "email": email,
+        "password": PASSWORD,
+        "first_name": "Jane",
+        "last_name": "Doe",
+    }
+    response = client.post("/api/v1/auth/patient/register", json=payload)
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Email already registered"
+
+
+def test_doctor_register_creates_clinic_and_requires_verification(fake_redis: FakeRedis) -> None:
+    _reset_database()
+    email = _unique_email()
+    register_payload = _register_doctor(email)
+    assert register_payload["email"] == email
+    assert register_payload["role"] == UserRole.doctor.value
+
+    with SessionLocal() as session:
+        user = session.query(User).filter(User.email == email).first()
+        assert user is not None and user.role == UserRole.doctor
+        doctor = user.doctor
+        assert doctor is not None
+        assert doctor.verified is False
+        assert doctor.clinic is not None
+        assert doctor.clinic.name == "Health Hub"
+        assert doctor.specialties, "Expected specialties to be associated"
+        assert doctor.specialties[0].slug == "cardiology"
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": PASSWORD},
+    )
+    assert login_response.status_code == 403
+    assert login_response.json()["detail"] == "Doctor account pending verification"
+
+
+def test_admin_register_and_login_flow(fake_redis: FakeRedis, monkeypatch: pytest.MonkeyPatch) -> None:
+    _reset_database()
+    admin_secret = "test-secret"
+    monkeypatch.setattr(settings, "admin_registration_secret", admin_secret)
+
+    email = _unique_email()
+    register_response = client.post(
+        "/api/v1/auth/admin/register",
+        json={
+            "email": email,
+            "password": PASSWORD,
+            "admin_secret": admin_secret,
+        },
+    )
+    assert register_response.status_code == 201
+    payload = register_response.json()
+    assert payload["email"] == email
+    assert payload["role"] == UserRole.admin.value
+
+    with SessionLocal() as session:
+        admin_user = session.query(User).filter(User.email == email).first()
+        assert admin_user is not None
+        assert admin_user.role == UserRole.admin
+        assert admin_user.patient is None
+        assert admin_user.doctor is None
+
+    login_response = client.post(
+        "/api/v1/auth/admin/login",
+        json={"email": email, "password": PASSWORD},
+    )
+    assert login_response.status_code == 200
+    login_payload = login_response.json()
+    assert login_payload["access_token"]
+    assert login_payload["expires_in"] == settings.access_token_exp_minutes * 60
 
 
 def test_login_sets_refresh_cookie_and_returns_token(fake_redis: FakeRedis) -> None:
